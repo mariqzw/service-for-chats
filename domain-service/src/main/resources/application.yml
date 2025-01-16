@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: "domain-service"
+
+  config:
+    import:
+      - classpath:application-db.yaml

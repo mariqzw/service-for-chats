@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/chats_db
+    username: postgres
+    password: Lg2003
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true    # Показывать SQL-запросы в консоли
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
