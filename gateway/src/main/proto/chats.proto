@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+option java_package = "org.mariqzw.grpc";
+option java_outer_classname = "ChatProto";
+
+message ChatMessageRequest {
+  string sender = 1;
+  string receiver = 2;
+  string message_text = 3;
+}
+
+message ChatMessageByIdRequest {
+  int64 id = 1;
+}
+
+message ChatMessagesListRequest {
+  // [OPTIONAL] Add filters here, such as by sender or receiver
+}
+
+message ChatMessage {
+  int64 id = 1;
+  string sender = 2;
+  string receiver = 3;
+  string message_text = 4;
+  string timestamp = 5; // ISO 8601 format
+}
+
+message ChatMessageResponse {
+  bool success = 1;
+  string message = 2;
+  int64 id = 3;
+  string sender = 4;
+  string receiver = 5;
+  string message_text = 6;
+  string timestamp = 7;
+}
+
+message ChatMessagesListResponse {
+  repeated ChatMessage messages = 1;
+}
+
+service ChatService {
+  // Create a new chat message
+  rpc CreateMessage(ChatMessageRequest) returns (ChatMessageResponse);
+
+  // Get a chat message by ID (synchronous GET)
+  rpc GetMessageById(ChatMessageByIdRequest) returns (ChatMessageResponse);
+
+  // Get all chat messages (synchronous GET)
+  rpc GetAllMessages(ChatMessagesListRequest) returns (ChatMessagesListResponse);
+
+  // Update a chat message
+  rpc UpdateMessage(ChatMessage) returns (ChatMessageResponse);
+
+  // Delete a chat message
+  rpc DeleteMessage(ChatMessageByIdRequest) returns (ChatMessageResponse);
+}
