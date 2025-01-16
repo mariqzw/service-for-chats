@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.4.1'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.google.protobuf' version '0.9.4'
 }
 
 group = 'org.mariqzw'
@@ -18,9 +19,48 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-starter'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // Spring Boot starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'         // For building web applications and REST APIs
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'  // Redis support for caching and messaging
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'    // Actuator for monitoring and management endpoints
+
+    // Logging dependencies
+    implementation 'ch.qos.logback:logback-classic:1.5.12'                    // Logback implementation for logging
+    implementation 'net.logstash.logback:logstash-logback-encoder:7.4'        // JSON logging with Logstash support
+
+    // Monitoring and metrics
+    implementation 'io.micrometer:micrometer-registry-prometheus'             // Prometheus metrics integration
+
+    // JSON and Java 8 date/time support
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.15.2' // Support for Java 8 date/time (JSR-310) in Jackson
+
+    // gRPC dependencies
+    implementation 'io.grpc:grpc-stub:1.68.1'            // Stub generation for gRPC clients and servers
+    implementation 'io.grpc:grpc-protobuf:1.68.1'        // Protocol buffer support for gRPC
+    runtimeOnly 'io.grpc:grpc-netty-shaded:1.68.1'       // Netty transport for gRPC runtime
+
+    // Compile-only dependencies
+    compileOnly 'org.apache.tomcat:annotations-api:6.0.53' // Annotations API for compile-time only
+
+    // Testing dependencies
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'  // Spring Boot testing utilities
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'           // JUnit platform launcher for runtime tests
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.25.5"
+    }
+    plugins {
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.68.1'
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
 }
 
 tasks.named('test') {
