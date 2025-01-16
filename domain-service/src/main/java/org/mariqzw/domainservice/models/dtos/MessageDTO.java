@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 public class MessageDTO {
 
+    private Long id;
     private String sender;
     private String receiver;
     private String messageText;
@@ -12,11 +13,20 @@ public class MessageDTO {
     public MessageDTO() {
     }
 
-    public MessageDTO(String sender, String receiver, String messageText, LocalDateTime timestamp) {
+    public MessageDTO(Long id, String sender, String receiver, String messageText, LocalDateTime timestamp) {
+        this.id = id;
         this.sender = sender;
         this.receiver = receiver;
         this.messageText = messageText;
         this.timestamp = timestamp;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public String getSender() {
