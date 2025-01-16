@@ -1,4 +1,4 @@
-package org.mariqzw.domainservice.models.repositories;
+package org.mariqzw.domainservice.repositories;
 
 import org.mariqzw.domainservice.models.entity.MessageEntity;
 import org.springframework.data.jpa.repository.JpaRepository;

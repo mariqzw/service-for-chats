@@ -22,12 +22,12 @@ public class MessageEntity {
     private String messageText;
 
     @Column(nullable = false)
-    private LocalDateTime timestamp;
+    private String timestamp;
 
     public MessageEntity() {
     }
 
-    public MessageEntity(String sender, String receiver, String messageText, LocalDateTime timestamp) {
+    public MessageEntity(String sender, String receiver, String messageText, String timestamp) {
         this.sender = sender;
         this.receiver = receiver;
         this.messageText = messageText;
@@ -66,11 +66,11 @@ public class MessageEntity {
         this.messageText = messageText;
     }
 
-    public LocalDateTime getTimestamp() {
+    public String getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(LocalDateTime timestamp) {
+    public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
     }
 }

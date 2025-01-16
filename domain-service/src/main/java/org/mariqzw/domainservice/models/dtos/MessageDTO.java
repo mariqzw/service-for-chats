@@ -8,12 +8,12 @@ public class MessageDTO {
     private String sender;
     private String receiver;
     private String messageText;
-    private LocalDateTime timestamp;
+    private String timestamp;
 
     public MessageDTO() {
     }
 
-    public MessageDTO(Long id, String sender, String receiver, String messageText, LocalDateTime timestamp) {
+    public MessageDTO(Long id, String sender, String receiver, String messageText, String timestamp) {
         this.id = id;
         this.sender = sender;
         this.receiver = receiver;
@@ -53,11 +53,11 @@ public class MessageDTO {
         this.messageText = messageText;
     }
 
-    public LocalDateTime getTimestamp() {
+    public String getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(LocalDateTime timestamp) {
+    public void setTimestamp(String timestamp) {
         this.timestamp = timestamp;
     }
 }
