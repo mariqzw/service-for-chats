@@ -20,7 +20,7 @@ public class ChatsController {
 
     public ChatsController() {
         ManagedChannel channel = ManagedChannelBuilder
-                .forAddress("domain-service", 8080)
+                .forAddress("domain-service", 9090)
                 .usePlaintext()
                 .build();
 
