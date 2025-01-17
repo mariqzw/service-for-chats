@@ -18,7 +18,7 @@ public class GrpcConfiguration implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        Server server = ServerBuilder.forPort(8080)
+        Server server = ServerBuilder.forPort(9090)
                 .addService(chatService)
                 .build();
 
