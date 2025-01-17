@@ -1,0 +1,161 @@
+services:
+  # --- Postgres ---
+  postgres:
+    image: postgres:latest
+    container_name: postgres
+    environment:
+      POSTGRES_DB: "chats_db"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    networks:
+      - app-network
+
+  # --- pgAdmin ---
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - '5050:80'
+    networks:
+      - app-network
+
+  # --- RabbitMQ ---
+  rabbitmq:
+    image: rabbitmq:management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - app-network
+
+  # --- Redis ---
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
+  # --- Logstash ---
+  logstash:
+    image: logstash:7.17.0
+    container_name: logstash
+    volumes:
+      - ./logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./logs/application.log:/app/logs/application.log
+    ports:
+      - "5000:5000"
+    networks:
+      - app-network
+    depends_on:
+      - elasticsearch
+
+  # --- Elasticsearch ---
+  elasticsearch:
+    image: elasticsearch:7.17.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - app-network
+
+  # --- Kibana ---
+  kibana:
+    image: kibana:7.17.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=["http://elasticsearch:9200"]
+    ports:
+      - "5601:5601"
+    networks:
+      - app-network
+
+  # --- Prometheus ---
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - app-network
+
+  # --- Grafana ---
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    networks:
+      - app-network
+    depends_on:
+      - prometheus
+
+  # --- Domain Service ---
+  domain-service:
+    build:
+      context: ./domain-service
+      dockerfile: Dockerfile
+    container_name: domain-service
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/chats_db"
+      SPRING_DATASOURCE_USERNAME: "postgres"
+      SPRING_DATASOURCE_PASSWORD: "postgres"
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+
+  # --- Gateway ---
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: gateway
+    ports:
+      - "8081:8081"
+    depends_on:
+      - domain-service
+      - redis
+      - logstash
+    volumes:
+      - ./logs/application.log:/app/logs/application.log
+    networks:
+      - app-network
+
+volumes:
+  postgres-data:
+  elasticsearch_data:
+  es-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
