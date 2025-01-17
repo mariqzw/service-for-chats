@@ -128,8 +128,13 @@ services:
       SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/chats_db"
       SPRING_DATASOURCE_USERNAME: "postgres"
       SPRING_DATASOURCE_PASSWORD: "postgres"
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
     depends_on:
       - postgres
+      - rabbitmq
     networks:
       - app-network
 
@@ -141,8 +146,14 @@ services:
     container_name: gateway
     ports:
       - "8081:8081"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
+      SPRING_RABBITMQ_USERNAME: guest
+      SPRING_RABBITMQ_PASSWORD: guest
     depends_on:
       - domain-service
+      - rabbitmq
       - redis
       - logstash
     volumes:
