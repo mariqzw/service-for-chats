@@ -5,3 +5,4 @@ spring:
   config:
     import:
       - classpath:application-db.yaml
+      - classpath:application-mb.yaml

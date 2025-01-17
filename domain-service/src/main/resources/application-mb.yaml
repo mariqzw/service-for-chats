@@ -1,0 +1,15 @@
+spring:
+  rabbitmq:
+    host: localhost
+    virtual-host: "/"
+    port: 5672
+    username: guest
+    password: guest
+
+    exchange: messages.exchange
+    create:
+        routingkey: messages.create
+    update:
+        routingkey: messages.update
+    delete:
+        routingkey: messages.delete
