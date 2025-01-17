@@ -5,6 +5,8 @@ import io.grpc.ManagedChannelBuilder;
 import org.mariqzw.gateway.models.dtos.MessageDTO;
 import org.mariqzw.grpc.ChatProto;
 import org.mariqzw.grpc.ChatServiceGrpc;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.bind.annotation.*;
@@ -16,29 +18,38 @@ import java.util.List;
 @RequestMapping("api/messages")
 public class ChatsController {
 
+    private final RabbitTemplate rabbitTemplate;
+
+    @Value("${spring.rabbitmq.exchange}")
+    private String exchange;
+
+    @Value("${spring.rabbitmq.create.routingkey}")
+    private String createRoutingKey;
+
+    @Value("${spring.rabbitmq.update.routingkey}")
+    private String updateRoutingKey;
+
+    @Value("${spring.rabbitmq.delete.routingkey}")
+    private String deleteRoutingKey;
+
     private final ChatServiceGrpc.ChatServiceBlockingStub stub;
 
-    public ChatsController() {
+    public ChatsController(RabbitTemplate rabbitTemplate) {
         ManagedChannel channel = ManagedChannelBuilder
                 .forAddress("domain-service", 9090)
                 .usePlaintext()
                 .build();
 
         this.stub = ChatServiceGrpc.newBlockingStub(channel);
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @PostMapping
     @CacheEvict(value = {"messagesList", "messages"}, allEntries = true)
     public String createMessage(@RequestBody MessageDTO chatMessageRequest) {
-        ChatProto.ChatMessageRequest request =
-                ChatProto.ChatMessageRequest.newBuilder()
-                        .setSender(chatMessageRequest.getSender())
-                        .setReceiver(chatMessageRequest.getReceiver())
-                        .setMessageText(chatMessageRequest.getMessageText())
-                        .build();
+        rabbitTemplate.convertAndSend(exchange, createRoutingKey, chatMessageRequest);
 
-        ChatProto.ChatMessageResponse response = stub.createMessage(request);
-        return response.getMessage();
+        return "Message creation request sent to RabbitMQ";
     }
 
     @GetMapping("/{id}")
@@ -85,27 +96,17 @@ public class ChatsController {
     @PutMapping("/{id}")
     @CacheEvict(value = {"messages", "messagesList"}, key = "#id", allEntries = true)
     public String updateTransaction(@PathVariable Long id, @RequestBody MessageDTO chatMessageRequest) {
-        ChatProto.ChatMessage request =
-                ChatProto.ChatMessage.newBuilder()
-                        .setId(id)
-                        .setSender(chatMessageRequest.getSender())
-                        .setReceiver(chatMessageRequest.getReceiver())
-                        .setMessageText(chatMessageRequest.getMessageText())
-                        .build();
+        chatMessageRequest.setId(id);
+        rabbitTemplate.convertAndSend(exchange, updateRoutingKey, chatMessageRequest);
 
-        ChatProto.ChatMessageResponse response = stub.updateMessage(request);
-        return response.getMessage();
+        return "Message update request sent to RabbitMQ";
     }
 
     @DeleteMapping("/{id}")
     @CacheEvict(value = {"messagesList", "messages"}, key = "#id", allEntries = true)
     public String deleteTransaction(@PathVariable Long id) {
-        ChatProto.ChatMessageByIdRequest request =
-                ChatProto.ChatMessageByIdRequest.newBuilder()
-                        .setId(id)
-                        .build();
+        rabbitTemplate.convertAndSend(exchange, deleteRoutingKey, id);
 
-        ChatProto.ChatMessageResponse response = stub.deleteMessage(request);
-        return response.getMessage();
+        return "Message deletion request sent to RabbitMQ";
     }
 }
