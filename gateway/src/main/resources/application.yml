@@ -14,6 +14,7 @@ spring:
     import:
       - classpath:application-redis.yml
       - classpath:application-management.yml
+      - classpath:application-mb.yaml
 
 server:
   port: 8081
