@@ -1,10 +1,12 @@
 package org.mariqzw.domainservice.services;
 
 import io.grpc.stub.StreamObserver;
+import org.mariqzw.domainservice.models.dtos.MessageDTO;
 import org.mariqzw.domainservice.models.entity.MessageEntity;
 import org.mariqzw.domainservice.repositories.MessageRepository;
 import org.mariqzw.grpc.*;
 import org.mariqzw.grpc.ChatServiceGrpc;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -16,40 +18,42 @@ import java.util.Optional;
 public class ChatServiceImpl extends ChatServiceGrpc.ChatServiceImplBase {
 
     private final MessageRepository messageRepository;
+    private final ModelMapper modelMapper;
 
     @Autowired
-    public ChatServiceImpl(MessageRepository messageRepository) {
+    public ChatServiceImpl(MessageRepository messageRepository, ModelMapper modelMapper) {
         this.messageRepository = messageRepository;
+        this.modelMapper = modelMapper;
     }
 
     @Override
     public void createMessage(ChatMessageRequest request, StreamObserver<ChatMessageResponse> responseObserver) {
         try {
-            // Save the message to the database
-            MessageEntity message = new MessageEntity();
-            message.setSender(request.getSender());
-            message.setReceiver(request.getReceiver());
-            message.setMessageText(request.getMessageText());
-            message.setTimestamp(LocalDateTime.now().toString());
+            MessageDTO messageDTO = new MessageDTO();
+            messageDTO.setSender(request.getSender());
+            messageDTO.setReceiver(request.getReceiver());
+            messageDTO.setMessageText(request.getMessageText());
+            messageDTO.setTimestamp(LocalDateTime.now().toString());
 
-            MessageEntity savedMessage = messageRepository.save(message);
+            MessageEntity messageEntity = modelMapper.map(messageDTO, MessageEntity.class);
 
-            // Build the response
+            MessageEntity savedEntity = messageRepository.save(messageEntity);
+
+            MessageDTO savedDTO = modelMapper.map(savedEntity, MessageDTO.class);
+
             ChatMessageResponse response = ChatMessageResponse.newBuilder()
                     .setSuccess(true)
                     .setMessage("Message created successfully.")
-                    .setId(savedMessage.getId())
-                    .setSender(savedMessage.getSender())
-                    .setReceiver(savedMessage.getReceiver())
-                    .setMessageText(savedMessage.getMessageText())
-                    .setTimestamp(savedMessage.getTimestamp())
+                    .setId(savedDTO.getId())
+                    .setSender(savedDTO.getSender())
+                    .setReceiver(savedDTO.getReceiver())
+                    .setMessageText(savedDTO.getMessageText())
+                    .setTimestamp(savedDTO.getTimestamp())
                     .build();
 
-            // Send the response
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } catch (Exception e) {
-            // Handle exceptions
             ChatMessageResponse response = ChatMessageResponse.newBuilder()
                     .setSuccess(false)
                     .setMessage("Failed to create message: " + e.getMessage())
@@ -109,13 +113,37 @@ public class ChatServiceImpl extends ChatServiceGrpc.ChatServiceImplBase {
     @Override
     public void updateMessage(ChatMessage request, StreamObserver<ChatMessageResponse> responseObserver) {
         try {
-            ChatMessageResponse response = ChatMessageResponse.newBuilder()
-                    .setSuccess(true)
-                    .setMessage("Message update request sent successfully")
-                    .build();
+            Optional<MessageEntity> existingMessageOpt = messageRepository.findById(request.getId());
 
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
+            if (existingMessageOpt.isPresent()) {
+                MessageEntity existingMessage = existingMessageOpt.get();
+
+                MessageDTO updatedMessageDTO = new MessageDTO();
+                updatedMessageDTO.setId(request.getId());
+                updatedMessageDTO.setSender(request.getSender());
+                updatedMessageDTO.setReceiver(request.getReceiver());
+                updatedMessageDTO.setMessageText(request.getMessageText());
+                updatedMessageDTO.setTimestamp(LocalDateTime.now().toString());
+
+                modelMapper.map(updatedMessageDTO, existingMessage);
+
+                MessageEntity updatedEntity = messageRepository.save(existingMessage);
+
+                ChatMessageResponse response = ChatMessageResponse.newBuilder()
+                        .setSuccess(true)
+                        .setMessage("Message updated successfully.")
+                        .setId(updatedEntity.getId())
+                        .setSender(updatedEntity.getSender())
+                        .setReceiver(updatedEntity.getReceiver())
+                        .setMessageText(updatedEntity.getMessageText())
+                        .setTimestamp(updatedEntity.getTimestamp())
+                        .build();
+
+                responseObserver.onNext(response);
+                responseObserver.onCompleted();
+            } else {
+                responseObserver.onError(new RuntimeException("Message not found"));
+            }
         } catch (Exception e) {
             e.printStackTrace();
             responseObserver.onError(e);
@@ -125,13 +153,26 @@ public class ChatServiceImpl extends ChatServiceGrpc.ChatServiceImplBase {
     @Override
     public void deleteMessage(ChatMessageByIdRequest request, StreamObserver<ChatMessageResponse> responseObserver) {
         try {
-            ChatMessageResponse response = ChatMessageResponse.newBuilder()
-                    .setSuccess(true)
-                    .setMessage("Message deletion request sent successfully")
-                    .build();
+            Optional<MessageEntity> message = messageRepository.findById(request.getId());
+            if (message.isPresent()) {
+                messageRepository.deleteById(request.getId());
+                MessageDTO messageDTO = modelMapper.map(message.get(), MessageDTO.class);
 
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
+                ChatMessageResponse response = ChatMessageResponse.newBuilder()
+                        .setSuccess(true)
+                        .setMessage("Message deleted successfully")
+                        .setId(messageDTO.getId())
+                        .setSender(messageDTO.getSender())
+                        .setReceiver(messageDTO.getReceiver())
+                        .setMessageText(messageDTO.getMessageText())
+                        .setTimestamp(messageDTO.getTimestamp())
+                        .build();
+
+                responseObserver.onNext(response);
+                responseObserver.onCompleted();
+            } else {
+                responseObserver.onError(new RuntimeException("Message not found"));
+            }
         } catch (Exception e) {
             e.printStackTrace();
             responseObserver.onError(e);
