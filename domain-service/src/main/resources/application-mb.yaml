@@ -13,3 +13,6 @@ spring:
         routingkey: messages.update
     delete:
         routingkey: messages.delete
+    create.queue: messages.create
+    update.queue: messages.update
+    delete.queue: messages.delete
