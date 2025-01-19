@@ -1,6 +1,10 @@
 package org.mariqzw.domainservice.services;
 
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import org.mariqzw.domainservice.exception.DatabaseUnavailableException;
+import org.mariqzw.domainservice.exception.MessageNotFoundException;
 import org.mariqzw.domainservice.models.dtos.MessageDTO;
 import org.mariqzw.domainservice.models.entity.MessageEntity;
 import org.mariqzw.domainservice.repositories.MessageRepository;
@@ -8,6 +12,7 @@ import org.mariqzw.grpc.*;
 import org.mariqzw.grpc.ChatServiceGrpc;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -53,6 +58,8 @@ public class ChatServiceImpl extends ChatServiceGrpc.ChatServiceImplBase {
 
             responseObserver.onNext(response);
             responseObserver.onCompleted();
+        } catch (DataAccessException e) {
+            throw new DatabaseUnavailableException("Database is currently unavailable", e);
         } catch (Exception e) {
             ChatMessageResponse response = ChatMessageResponse.newBuilder()
                     .setSuccess(false)
@@ -66,48 +73,62 @@ public class ChatServiceImpl extends ChatServiceGrpc.ChatServiceImplBase {
 
     @Override
     public void getMessageById(ChatMessageByIdRequest request, StreamObserver<ChatMessageResponse> responseObserver) {
-        Optional<MessageEntity> message = messageRepository.findById(request.getId());
-        if (message.isPresent()) {
-            MessageEntity entity = message.get();
+        try {
+            Optional<MessageEntity> message = messageRepository.findById(request.getId());
+            if (message.isPresent()) {
+                MessageEntity entity = message.get();
 
-            ChatMessageResponse response = ChatMessageResponse.newBuilder()
-                    .setSuccess(true)
-                    .setMessage("Message found")
-                    .setId(entity.getId())
-                    .setSender(entity.getSender())
-                    .setReceiver(entity.getReceiver())
-                    .setMessageText(entity.getMessageText())
-                    .setTimestamp(entity.getTimestamp())
-                    .build();
+                ChatMessageResponse response = ChatMessageResponse.newBuilder()
+                        .setSuccess(true)
+                        .setMessage("Message found")
+                        .setId(entity.getId())
+                        .setSender(entity.getSender())
+                        .setReceiver(entity.getReceiver())
+                        .setMessageText(entity.getMessageText())
+                        .setTimestamp(entity.getTimestamp())
+                        .build();
 
-            responseObserver.onNext(response);
-            responseObserver.onCompleted();
-        } else {
-            responseObserver.onError(new RuntimeException("Message not found"));
+                responseObserver.onNext(response);
+                responseObserver.onCompleted();
+            } else {
+                throw new MessageNotFoundException("Message not found");
+            }
+        } catch (MessageNotFoundException e) {
+            responseObserver.onError(new StatusRuntimeException(Status.NOT_FOUND.withDescription(e.getMessage())));
+        } catch (DataAccessException e) {
+            responseObserver.onError(new StatusRuntimeException(Status.UNAVAILABLE.withDescription("Database is currently unavailable")));
+        } catch (Exception e) {
+            responseObserver.onError(new StatusRuntimeException(Status.INTERNAL.withDescription("Internal server error")));
         }
     }
 
     @Override
     public void getAllMessages(ChatMessagesListRequest request, StreamObserver<ChatMessagesListResponse> responseObserver) {
-        List<MessageEntity> messages = messageRepository.findAll();
+        try {
+            List<MessageEntity> messages = messageRepository.findAll();
 
-        ChatMessagesListResponse.Builder responseBuilder = ChatMessagesListResponse.newBuilder();
+            ChatMessagesListResponse.Builder responseBuilder = ChatMessagesListResponse.newBuilder();
 
-        for (MessageEntity entity : messages) {
-            ChatMessage chatMessage = ChatMessage.newBuilder()
-                    .setId(entity.getId())
-                    .setSender(entity.getSender())
-                    .setReceiver(entity.getReceiver())
-                    .setMessageText(entity.getMessageText())
-                    .setTimestamp(entity.getTimestamp())
-                    .build();
+            for (MessageEntity entity : messages) {
+                ChatMessage chatMessage = ChatMessage.newBuilder()
+                        .setId(entity.getId())
+                        .setSender(entity.getSender())
+                        .setReceiver(entity.getReceiver())
+                        .setMessageText(entity.getMessageText())
+                        .setTimestamp(entity.getTimestamp())
+                        .build();
 
-            responseBuilder.addMessages(chatMessage);
+                responseBuilder.addMessages(chatMessage);
+            }
+
+            ChatMessagesListResponse response = responseBuilder.build();
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+        } catch (DataAccessException e) {
+            responseObserver.onError(new StatusRuntimeException(Status.UNAVAILABLE.withDescription("Database is currently unavailable")));
+        } catch (Exception e) {
+            responseObserver.onError(new StatusRuntimeException(Status.INTERNAL.withDescription("Internal server error")));
         }
-
-        ChatMessagesListResponse response = responseBuilder.build();
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
     }
 
     @Override
@@ -142,11 +163,12 @@ public class ChatServiceImpl extends ChatServiceGrpc.ChatServiceImplBase {
                 responseObserver.onNext(response);
                 responseObserver.onCompleted();
             } else {
-                responseObserver.onError(new RuntimeException("Message not found"));
+                responseObserver.onError(new StatusRuntimeException(Status.NOT_FOUND.withDescription("Message not found")));
             }
+        } catch (DataAccessException e) {
+            responseObserver.onError(new StatusRuntimeException(Status.UNAVAILABLE.withDescription("Database is currently unavailable")));
         } catch (Exception e) {
-            e.printStackTrace();
-            responseObserver.onError(e);
+            responseObserver.onError(new StatusRuntimeException(Status.INTERNAL.withDescription("Internal server error")));
         }
     }
 
@@ -171,11 +193,12 @@ public class ChatServiceImpl extends ChatServiceGrpc.ChatServiceImplBase {
                 responseObserver.onNext(response);
                 responseObserver.onCompleted();
             } else {
-                responseObserver.onError(new RuntimeException("Message not found"));
+                responseObserver.onError(new StatusRuntimeException(Status.NOT_FOUND.withDescription("Message not found")));
             }
+        } catch (DataAccessException e) {
+            responseObserver.onError(new StatusRuntimeException(Status.UNAVAILABLE.withDescription("Database is currently unavailable")));
         } catch (Exception e) {
-            e.printStackTrace();
-            responseObserver.onError(e);
+            responseObserver.onError(new StatusRuntimeException(Status.INTERNAL.withDescription("Internal server error")));
         }
     }
 }
