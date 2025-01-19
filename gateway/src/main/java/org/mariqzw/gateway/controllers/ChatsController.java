@@ -5,10 +5,13 @@ import io.grpc.ManagedChannelBuilder;
 import org.mariqzw.gateway.models.dtos.MessageDTO;
 import org.mariqzw.grpc.ChatProto;
 import org.mariqzw.grpc.ChatServiceGrpc;
+import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -46,10 +49,13 @@ public class ChatsController {
 
     @PostMapping
     @CacheEvict(value = {"messagesList", "messages"}, allEntries = true)
-    public String createMessage(@RequestBody MessageDTO chatMessageRequest) {
-        rabbitTemplate.convertAndSend(exchange, createRoutingKey, chatMessageRequest);
-
-        return "Message creation request sent to RabbitMQ";
+    public ResponseEntity<String> createMessage(@RequestBody MessageDTO chatMessageRequest) {
+        try {
+            rabbitTemplate.convertAndSend(exchange, createRoutingKey, chatMessageRequest);
+            return ResponseEntity.ok("Message creation request sent to RabbitMQ");
+        } catch (AmqpException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to send message to RabbitMQ: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{id}")
@@ -95,18 +101,24 @@ public class ChatsController {
 
     @PutMapping("/{id}")
     @CacheEvict(value = {"messages", "messagesList"}, key = "#id", allEntries = true)
-    public String updateTransaction(@PathVariable Long id, @RequestBody MessageDTO chatMessageRequest) {
-        chatMessageRequest.setId(id);
-        rabbitTemplate.convertAndSend(exchange, updateRoutingKey, chatMessageRequest);
-
-        return "Message update request sent to RabbitMQ";
+    public ResponseEntity<String> updateTransaction(@PathVariable Long id, @RequestBody MessageDTO chatMessageRequest) {
+        try {
+            chatMessageRequest.setId(id);
+            rabbitTemplate.convertAndSend(exchange, updateRoutingKey, chatMessageRequest);
+            return ResponseEntity.ok("Message update request sent to RabbitMQ");
+        } catch (AmqpException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to send message update request to RabbitMQ" + e.getMessage());
+        }
     }
 
     @DeleteMapping("/{id}")
     @CacheEvict(value = {"messagesList", "messages"}, key = "#id", allEntries = true)
-    public String deleteTransaction(@PathVariable Long id) {
-        rabbitTemplate.convertAndSend(exchange, deleteRoutingKey, id);
-
-        return "Message deletion request sent to RabbitMQ";
+    public ResponseEntity<String> deleteTransaction(@PathVariable Long id) {
+        try {
+            rabbitTemplate.convertAndSend(exchange, deleteRoutingKey, id);
+            return ResponseEntity.ok("Message delete request sent to RabbitMQ");
+        } catch (AmqpException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to send delete request to RabbitMQ: " + e.getMessage());
+        }
     }
 }
